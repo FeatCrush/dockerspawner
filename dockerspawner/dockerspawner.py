@@ -689,7 +689,15 @@ class DockerSpawner(Spawner):
         config=True,
         help=dedent(
             """
-            Path of json file describing groups ownership
+            Path of json file describing groups ownership. 
+            All the users in the same group will share a volume to exchange data.
+            The format of json is : 
+            {
+                user1 : group1
+                user2 : group1
+                user3 : groupe2
+            }
+            If file is mapped to jupyterhub folder, usually '/srv/jupyterhub/', groups_path = '$filename'
             """
         ),
     )
