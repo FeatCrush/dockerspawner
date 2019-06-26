@@ -655,6 +655,7 @@ class DockerSpawner(Spawner):
         rw_group_volume = self._create_group_bind_volume(self.escaped_name)
         if rw_group_volume is not None:
             binds = self._volumes_to_binds(rw_group_volume, binds)
+            self.log.info("Binding team volume: " + rw_group_volume)
         read_only_volumes = {}
         # FIXME: replace getattr with self.internal_ssl
         # when minimum jupyterhub is 1.0
