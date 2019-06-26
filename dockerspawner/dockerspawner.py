@@ -11,6 +11,7 @@ from tarfile import TarFile, TarInfo
 from textwrap import dedent
 from urllib.parse import urlparse
 import warnings
+import json
 
 import docker
 from docker.errors import APIError
@@ -651,6 +652,9 @@ class DockerSpawner(Spawner):
 
         """
         binds = self._volumes_to_binds(self.volumes, {})
+        rw_group_volume = self._create_group_bind_volume(self.escaped_name)
+        if rw_group_volume is not None:
+            binds = self._volumes_to_binds(rw_group_volume, binds)
         read_only_volumes = {}
         # FIXME: replace getattr with self.internal_ssl
         # when minimum jupyterhub is 1.0
@@ -678,6 +682,42 @@ class DockerSpawner(Spawner):
         )
 
     object_id = Unicode(allow_none=True)
+    
+    groups_path = Unicode(
+        "groups.json",
+        config=True,
+        help=dedent(
+            """
+            Path of json file describing groups ownership
+            """
+        ),
+    )
+    
+    def _read_group_config(self, groups_path):
+        try:
+            with open(groups_path, 'r') as groups:
+                data = json.load(groups)
+                return data
+        except EnvironmentError: # parent of IOError, OSError *and* WindowsError where available
+            self.log.warning("No group configuration found")
+            return None
+            
+    def _get_group_volume(self, username):
+        group_dict = self._read_group_config(self.groups_path)
+        if group_dict is None:
+            return group_dict
+        else:
+            return group_dict.get(username)
+    
+    def _create_group_bind_volume(self, username):
+        group = self._get_group_volume(username)
+        if group is None:
+            return group
+        else:
+            host_path = "jupyterhub-shared-" + group
+            guest_path = os.environ.get('DOCKER_TEAM_DIR') or '/home/jovyan/work/partage_equipe'
+            return dict([(host_path, guest_path)])
+    
 
     def template_namespace(self):
         escaped_image = self.image.replace("/", "_")
